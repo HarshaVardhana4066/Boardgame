@@ -15,7 +15,7 @@ pipeline{
 
          stage('Git checkout'){
             steps{
-                git branch: 'main', url: 'https://github.com/jaiswaladi246/Boardgame.git'
+                git branch: 'main', url: 'https://github.com/pheonix4066/Boardgame.git'
             } 
         }
 
@@ -39,3 +39,4 @@ pipeline{
 
     }
 } 
+
