@@ -16,6 +16,7 @@ pipeline{
          stage('Git checkout'){
             steps{
                 git branch: "${params.Branch_name}", url: 'https://github.com/pheonix4066/Boardgame.git'
+
             } 
         }
 
