@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - feature
   pull_request:
     branches:
       - main
@@ -33,9 +34,15 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}  
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile1
+          push: true         # set to true if you want to push to Docker Hub
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3
 
 
-      - name: build image
-        run: docker build -f Dockerfile1 -t ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3 .
-      - name: push image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3  
+      #- name: push image
+      #  run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3  
