@@ -80,14 +80,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}  
       
-      - name: Build Docker image and push to docker hub
+      - name: Build and Push Docker Image
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile1
-          push: true         # set to true if you want to push to Docker Hub
-          #tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3
+          push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v${{ steps.set-version.outputs.new_version }}
+
 
 
 
