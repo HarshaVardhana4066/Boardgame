@@ -37,17 +37,17 @@ jobs:
           echo "New version: $new_version"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
     
+      - name: Set Git user
+        run: |
+          git config user.name "Harshavardhana"
+          git config user.email "your-email@users.noreply.github.com"
+
       - name: Push Git tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NEW_TAG="v${{ steps.set-version.outputs.new_version }}"
-          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-          echo "Tag $NEW_TAG already exists. Skipping."
-          else
-          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} "$NEW_TAG"
-          fi
+          git tag -a "v${{ steps.set-version.outputs.new_version }}" -m "Release v${{ steps.set-version.outputs.new_version }}"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} "v${{ steps.set-version.outputs.new_version }}"
 
       
 
@@ -80,17 +80,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}  
       
-      - name: Build and Push Docker Image
-        if: github.ref == 'refs/heads/main'
+      - name: Build Docker image and push to docker hub
         uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile1
-          push: true
+          push: true         # set to true if you want to push to Docker Hub
+          #tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v${{ steps.set-version.outputs.new_version }}
 
 
 
-
       #- name: push image
-      #  run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3  
+      #  run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:v3   
