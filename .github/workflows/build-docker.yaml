@@ -32,11 +32,6 @@ jobs:
           fi
           echo "New version: $new_version"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
-
-      - name: Set Git user
-        run: |
-          git config user.name "Harsha"
-          git config user.email "harshavardhana.m03@gmail.com"
     
       - name: Set Git user
         run: |
@@ -45,10 +40,10 @@ jobs:
 
       - name: Push Git tag
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git tag -a "v${{ steps.set-version.outputs.new_version }}" -m "Release v${{ steps.set-version.outputs.new_version }}"
-          git push https://x-access-token:${MY_GITHUB_TOKEN}@github.com/${{ github.repository }} "v${{ steps.set-version.outputs.new_version }}"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} "v${{ steps.set-version.outputs.new_version }}"
 
       
 
@@ -60,7 +55,7 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}         
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         
 
       - name: Set up JDK 11
         uses: actions/setup-java@v4
