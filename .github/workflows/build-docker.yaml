@@ -1,4 +1,8 @@
 name: Build and publish image to docker hub
+
+permissions:
+  contents: write
+
 on:
   push:
     branches:
