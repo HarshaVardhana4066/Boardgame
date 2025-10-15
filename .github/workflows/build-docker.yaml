@@ -33,6 +33,12 @@ jobs:
           echo "New version: $new_version"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
+      - name: Set Git user
+        run: |
+          git config user.name "Harsha"
+          git config user.email "harshavardhana.m03@gmail.com"
+    
+
       - name: Create Git Tag
         run: |
           git tag -a "v${{ steps.set-version.outputs.new_version }}" -m "Release v${{ steps.set-version.outputs.new_version }}"
