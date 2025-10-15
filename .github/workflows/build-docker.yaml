@@ -26,6 +26,6 @@ jobs:
 
 
       - name: build image
-        run: docker build . -t phoenix4066/boardgame:v1
+        run: docker build . -t phoenix4066/boardgame-fromgit:v3
       - name: push image
-        run: docker push phoenix4066/boardgame:v2  
+        run: docker push phoenix4066/boardgame:v3  
