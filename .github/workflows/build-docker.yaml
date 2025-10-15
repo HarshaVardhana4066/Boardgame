@@ -31,7 +31,9 @@ jobs:
       - name: Set Version
         id: set-version
         run: |
-          latest_tag=$(git tag --sort=-creatordate | head -n1)
+          # Get the latest numeric tag (ignore pre-releases or branch tags)
+          latest_tag=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+
           if [ -z "$latest_tag" ]; then
             base_version="1.0.0"
           else
@@ -43,7 +45,8 @@ jobs:
           # Sanitize branch name
           branch_name=${GITHUB_REF_NAME//\//-}
 
-          if [ "$GITHUB_REF_NAME" != "refs/heads/main" ]; then
+          # Feature branch version
+          if [[ "$GITHUB_REF_NAME" != "refs/heads/main" ]]; then
             new_version="${base_version}-${branch_name}"
           else
             new_version="$base_version"
@@ -83,7 +86,7 @@ jobs:
             gh release create "$NEW_TAG" \
               --title "Release $NEW_TAG" \
               --notes "Automated release for $NEW_TAG" \
-              --prerelease $([ "${GITHUB_REF_NAME}" != "refs/heads/main" ] && echo true || echo false)
+              --prerelease $([[ "${GITHUB_REF_NAME}" != "refs/heads/main" ]] && echo true || echo false)
           fi
 
       # Step 7: Set up JDK 11
