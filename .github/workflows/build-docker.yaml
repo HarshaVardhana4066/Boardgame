@@ -28,13 +28,14 @@ jobs:
         run: |
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$latest_tag" ]; then
-          new_version="1.0.0"
+            new_version="1.0.0"
           else
-          IFS='.' read -r major minor patch <<< "${latest_tag#v}"
-          patch=$((patch + 1))
-          new_version="$major.$minor.$patch"
+            IFS='.' read -r major minor patch <<< "${latest_tag#v}"
+            patch=$((patch + 1))
+            new_version="$major.$minor.$patch"
           fi
-
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
     
       - name: Set Git user
         run: |
