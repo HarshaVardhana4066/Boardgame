@@ -11,7 +11,7 @@ on:
   pull_request:
     branches:
       - feature
-      - main    
+      - main
   workflow_dispatch:
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
         run: |
           git fetch --tags
 
-          # Start with latest tag or default
+          # Get latest tag or default
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           echo "Latest tag: $latest_tag"
 
@@ -47,20 +47,28 @@ jobs:
             fi
           done
 
-          new_version="${major}.${minor}.${patch}-SNAPSHOT"
+          new_version="${major}.${minor}.${patch}"  # Release version, no -SNAPSHOT
           echo "Next tag: $new_tag"
           echo "Next version: $new_version"
 
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      # 4️⃣ Configure Git user
+      # 3️⃣ Update pom.xml version
+      - name: Update pom.xml version
+        run: |
+          mvn versions:set -DnewVersion=${{ steps.set-version.outputs.new_version }}
+          mvn versions:commit
+          git add pom.xml
+          git commit -m "Update pom.xml to version ${{ steps.set-version.outputs.new_version }}"
+
+      # 4️⃣ Configure Git
       - name: Set Git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 5️⃣ Push Git tag
+      # 5️⃣ Push Git commit and tag
       - name: Push Git tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,30 +100,18 @@ jobs:
       - name: Build with Maven
         run: mvn clean install -DskipTests
 
-      # 9️⃣ Push artifact to S3 (optional)
-      #- name: Configure AWS credentials
-      #  uses: aws-actions/configure-aws-credentials@v3
-      #  with:
-      #    role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<OIDC_ROLE_FOR_GH_ACTIONS>
-      #    aws-region: <AWS_REGION>
-      #
-      #- name: Upload artifact to S3
-      #  run: |
-      #    ARTIFACT=target/my-app-${{ steps.set-version.outputs.new_version }}.jar
-      #    aws s3 cp $ARTIFACT s3://my-bucket/path/${{ steps.set-version.outputs.new_version }}/
-
-      # 🔟 Setup Docker Buildx
+      # 9️⃣ Setup Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 1️⃣1️⃣ Docker login
+      # 🔟 Docker login
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 1️⃣2️⃣ Build and push Docker image
+      # 1️⃣1️⃣ Build and push Docker image
       - name: Build and Push Docker image
         uses: docker/build-push-action@v4
         with:
