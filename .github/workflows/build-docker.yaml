@@ -102,12 +102,15 @@ jobs:
       - name: Set Docker tag
         id: docker-tag
         run: |
-          if [ "${GITHUB_REF##*/}" = "main" ]; then
-            echo "docker_tag=${{ steps.set-version.outputs.new_tag }}" >> $GITHUB_ENV
+          branch="${GITHUB_REF##*/}"
+          new_tag="${{ steps.set-version.outputs.new_tag }}"
+          if [ "$branch" = "main" ]; then
+          echo "docker_tag=$new_tag" >> $GITHUB_ENV
           else
-            echo "docker_tag=${GITHUB_REF##*/}" >> $GITHUB_ENV
-          fi  
+          # Combine branch name with version tag
+          echo "docker_tag=${branch}-${new_tag}" >> $GITHUB_ENV
 
+          
       # 1️⃣1️⃣ Build and push Docker image
       - name: Build and Push Docker image
         uses: docker/build-push-action@v4
