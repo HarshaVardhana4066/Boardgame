@@ -6,12 +6,12 @@ permissions:
 on:
   push:
     branches:
-      - feature
       - main
+      - feature
   pull_request:
     branches:
-      - feature
       - main
+      - feature
   workflow_dispatch:
 
 jobs:
@@ -19,25 +19,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout full repo with tags
+      # 1️⃣ Checkout full repository with tags
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Set Version (always bump)
+      # 2️⃣ Set version (always bump patch)
       - name: Set Version
         id: set-version
         run: |
           git fetch --tags
-
-          # Get latest tag or default
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           echo "Latest tag: $latest_tag"
 
           IFS='.' read -r major minor patch <<< "${latest_tag#v}"
 
-          # Increment patch until tag does not exist
+          # Increment patch until new tag does not exist
           while true; do
             patch=$((patch + 1))
             new_tag="v${major}.${minor}.${patch}"
@@ -46,14 +44,10 @@ jobs:
             fi
           done
 
-          new_version="${major}.${minor}.${patch}"
-          echo "Next tag: $new_tag"
-          echo "Next version: $new_version"
-
+          echo "New tag: $new_tag"
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      # 3️⃣ Configure Git (main only)
+      # 3️⃣ Configure Git (main branch only)
       - name: Configure Git user
         if: github.ref == 'refs/heads/main'
         run: |
@@ -69,7 +63,7 @@ jobs:
           git tag -a "${{ steps.set-version.outputs.new_tag }}" -m "Release ${{ steps.set-version.outputs.new_tag }}"
           git push origin "${{ steps.set-version.outputs.new_tag }}"
 
-      # 5️⃣ Create GitHub Release (main only)
+      # 5️⃣ Create GitHub release (main only)
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: actions/create-release@v1
@@ -81,7 +75,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 6️⃣ Setup JDK
+      # 6️⃣ Setup JDK for Maven
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
@@ -104,7 +98,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 🔟 Set Docker tag for main or feature branch
+      # 🔟 Set Docker tag based on branch
       - name: Set Docker tag
         id: docker-tag
         run: |
