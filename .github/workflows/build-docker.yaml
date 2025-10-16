@@ -41,15 +41,24 @@ jobs:
         run: |
           git config user.name "Harshavardhana"
           git config user.email "your-email@users.noreply.github.com"
+
       - name: Push Git tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag -a "v${{ steps.set-version.outputs.new_version }}" -m "Release v${{ steps.set-version.outputs.new_version }}"
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} "v${{ steps.set-version.outputs.new_version }}"
-      
+          tag_name="v${{ steps.set-version.outputs.new_version }}"
+          echo "Tag to push: $tag_name"
+
+          if git ls-remote --tags origin | grep -q "refs/tags/$tag_name$"; then
+            echo "⚠️ Tag $tag_name already exists. Skipping creation."
+          else
+            echo "✅ Creating new tag: $tag_name"
+            git tag -a "$tag_name" -m "Release $tag_name"
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} "$tag_name"
+          fi
 
       - name: Create GitHub Release
+        if: success()
         uses: actions/create-release@v1
         with:
           tag_name: "v${{ steps.set-version.outputs.new_version }}"
