@@ -65,8 +65,8 @@ jobs:
       # 4️⃣ Configure Git
       - name: Set Git user
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "HarshaVArdhana"
+          git config user.email "harshavardjhana.m03@gmail.com"
 
       # 5️⃣ Push Git commit and tag
       - name: Push Git tag
