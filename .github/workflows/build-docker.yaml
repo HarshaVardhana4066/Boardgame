@@ -96,6 +96,9 @@ jobs:
           # Build the project
           mvn clean install -DskipTests
 
+          echo "Updated pom.xml version:"
+          grep -m1 '<version>' pom.xml
+
 
       # 8️⃣ Setup Docker Buildx
       - name: Set up Docker Buildx
