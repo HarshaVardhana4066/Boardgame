@@ -83,22 +83,9 @@ jobs:
           java-version: '11'
           cache: 'maven'
 
-      # 7️⃣ Build Maven project and update version
-      - name: Build with Maven and update version
-        run: |
-          # Update the pom.xml version to match the new Git tag
-          mvn versions:set -DnewVersion=${{ steps.set-version.outputs.new_tag }} -DgenerateBackupPoms=false
-    
-          # Verify the version update
-          echo "Updated pom.xml version:"
-          grep -m1 '<version>' pom.xml
-
-          # Build the project
-          mvn clean install -DskipTests
-
-          echo "Updated pom.xml version:"
-          grep -m1 '<version>' pom.xml
-
+      # 7️⃣ Build Maven project
+      - name: Build with Maven
+        run: mvn clean install -DskipTests
 
       # 8️⃣ Setup Docker Buildx
       - name: Set up Docker Buildx
