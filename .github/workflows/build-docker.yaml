@@ -47,26 +47,26 @@ jobs:
             fi
           done
 
-          new_version="${major}.${minor}.${patch}"  # Release version, no -SNAPSHOT
+          new_version="${major}.${minor}.${patch}"  # release version, no -SNAPSHOT
           echo "Next tag: $new_tag"
           echo "Next version: $new_version"
 
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      # 3️⃣ Update pom.xml version
+      # 3️⃣ Configure Git identity (fix empty ident error)
+      - name: Configure Git user
+        run: |
+          git config user.name "Harshavardhana"
+          git config user.email "your-email@example.com"
+
+      # 4️⃣ Update pom.xml version
       - name: Update pom.xml version
         run: |
           mvn versions:set -DnewVersion=${{ steps.set-version.outputs.new_version }}
           mvn versions:commit
           git add pom.xml
           git commit -m "Update pom.xml to version ${{ steps.set-version.outputs.new_version }}"
-
-      # 4️⃣ Configure Git
-      - name: Set Git user
-        run: |
-          git config user.name "HarshaVArdhana"
-          git config user.email "harshavardjhana.m03@gmail.com"
 
       # 5️⃣ Push Git commit and tag
       - name: Push Git tag
