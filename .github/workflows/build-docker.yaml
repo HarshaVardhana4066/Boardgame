@@ -46,14 +46,14 @@ jobs:
             fi
           done
 
-          new_version="${major}.${minor}.${patch}"  # release version, no SNAPSHOT
+          new_version="${major}.${minor}.${patch}"
           echo "Next tag: $new_tag"
           echo "Next version: $new_version"
 
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      # 3️⃣ Configure Git user (main only)
+      # 3️⃣ Configure Git (main only)
       - name: Configure Git user
         if: github.ref == 'refs/heads/main'
         run: |
@@ -98,32 +98,26 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       # 9️⃣ Docker login
-      - name: Set Docker tag
-        id: docker-tag
-        run: |
-          if [ "${GITHUB_REF##*/}" = "main" ]; then
-            echo "docker_tag=v${{ steps.set-version.outputs.new_tag }}" >> $GITHUB_ENV
-          else
-            echo "docker_tag=${GITHUB_REF##*/}" >> $GITHUB_ENV
-          fi
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 🔟 Build and push Docker image
+      # 🔟 Set Docker tag for main or feature branch
+      - name: Set Docker tag
+        id: docker-tag
+        run: |
+          if [ "${GITHUB_REF##*/}" = "main" ]; then
+            echo "docker_tag=${{ steps.set-version.outputs.new_tag }}" >> $GITHUB_ENV
+          else
+            echo "docker_tag=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      # 1️⃣1️⃣ Build and push Docker image
       - name: Build and Push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile1
           push: true
-          # Tag with Git tag for main, branch name for feature
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:$(
-            if [ "${GITHUB_REF##*/}" = "main" ]; then
-              echo "${{ steps.set-version.outputs.new_tag }}"
-            else
-              echo "${GITHUB_REF##*/}"
-            fi
-           )
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ env.docker_tag }}
