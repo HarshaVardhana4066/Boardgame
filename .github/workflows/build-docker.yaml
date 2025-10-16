@@ -54,14 +54,6 @@ jobs:
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      # 3️⃣ Update pom.xml to new version
-      - name: Update pom.xml version
-        run: |
-          mvn versions:set -DnewVersion=${{ steps.set-version.outputs.new_version }}
-          mvn versions:commit
-          git add pom.xml
-          git commit -m "Update pom.xml to version ${{ steps.set-version.outputs.new_version }}"
-
       # 4️⃣ Configure Git user
       - name: Set Git user
         run: |
