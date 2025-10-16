@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2️⃣ Determine next available tag and version
+      # 2️⃣ Set Version (always bump)
       - name: Set Version
         id: set-version
         run: |
@@ -35,7 +35,6 @@ jobs:
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           echo "Latest tag: $latest_tag"
 
-          # Split into major.minor.patch
           IFS='.' read -r major minor patch <<< "${latest_tag#v}"
 
           # Increment patch until tag does not exist
@@ -47,38 +46,32 @@ jobs:
             fi
           done
 
-          new_version="${major}.${minor}.${patch}"  # release version, no -SNAPSHOT
+          new_version="${major}.${minor}.${patch}"  # release version, no SNAPSHOT
           echo "Next tag: $new_tag"
           echo "Next version: $new_version"
 
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      # 3️⃣ Configure Git identity (fix empty ident error)
+      # 3️⃣ Configure Git user (main only)
       - name: Configure Git user
+        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "Harshavardhana"
           git config user.email "your-email@example.com"
 
-      # 4️⃣ Update pom.xml version
-      - name: Update pom.xml version
-        run: |
-          mvn versions:set -DnewVersion=${{ steps.set-version.outputs.new_version }}
-          mvn versions:commit
-          git add pom.xml
-          git commit -m "Update pom.xml to version ${{ steps.set-version.outputs.new_version }}"
-
-      # 5️⃣ Push Git commit and tag
+      # 4️⃣ Push Git tag (main only)
       - name: Push Git tag
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git push origin HEAD  # push pom.xml commit
           git tag -a "${{ steps.set-version.outputs.new_tag }}" -m "Release ${{ steps.set-version.outputs.new_tag }}"
           git push origin "${{ steps.set-version.outputs.new_tag }}"
 
-      # 6️⃣ Create GitHub Release
+      # 5️⃣ Create GitHub Release (main only)
       - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
         uses: actions/create-release@v1
         with:
           tag_name: "${{ steps.set-version.outputs.new_tag }}"
@@ -88,7 +81,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 7️⃣ Setup JDK
+      # 6️⃣ Setup JDK
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
@@ -96,26 +89,33 @@ jobs:
           java-version: '11'
           cache: 'maven'
 
-      # 8️⃣ Build Maven project
+      # 7️⃣ Build Maven project
       - name: Build with Maven
         run: mvn clean install -DskipTests
 
-      # 9️⃣ Setup Docker Buildx
+      # 8️⃣ Setup Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 🔟 Docker login
+      # 9️⃣ Docker login
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 1️⃣1️⃣ Build and push Docker image
+      # 🔟 Build and push Docker image
       - name: Build and Push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile1
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ steps.set-version.outputs.new_tag }}
+          # Tag with Git tag for main, branch name for feature
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:$(
+            if [ "${GITHUB_REF##*/}" = "main" ]; then
+              echo "${{ steps.set-version.outputs.new_tag }}"
+            else
+              echo "${GITHUB_REF##*/}"
+            fi
+           )
