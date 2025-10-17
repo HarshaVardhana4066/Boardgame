@@ -37,22 +37,42 @@ jobs:
       - name: Fetch all tags
         run: git fetch --tags
 
-      # 4️⃣ Set Version
       - name: Set Version
         id: set-version
         run: |
+          git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-          echo "Latest tag: $latest_tag"
+
           IFS='.' read -r major minor patch <<< "${latest_tag#v}"
           while true; do
-            patch=$((patch + 1))
-            new_tag="v${major}.${minor}.${patch}"
-            if ! git rev-parse "$new_tag" >/dev/null 2>&1; then
-              break
-            fi
+          patch=$((patch + 1))
+          new_tag="v${major}.${minor}.${patch}"
+          if ! git rev-parse "$new_tag" >/dev/null 2>&1; then
+          break
+          fi
           done
-          echo "New tag: $new_tag"
-          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+          branch="${GITHUB_REF##*/}"
+          if [ "$branch" = "main" ]; then
+          docker_tag="${new_tag}"
+          else
+          docker_tag="${branch}-${new_tag}"
+          fi
+
+          echo "Version Details:"
+          echo "  Latest Tag  : $latest_tag"
+          echo "  New Tag     : $new_tag"
+          echo "  Branch      : $branch"
+          echo "  Docker Tag  : $docker_tag"
+
+    # Export outputs for later steps
+    {
+      echo "new_tag=$new_tag"
+      echo "docker_tag=$docker_tag"
+    } >> "$GITHUB_OUTPUT"
+
+    # Export env variable
+    echo "docker_tag=$docker_tag" >> $GITHUB_ENV
 
       # 5️⃣ Prepare POM version (branch-aware)
       - name: Prepare POM version
