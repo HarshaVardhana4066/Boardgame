@@ -37,7 +37,7 @@ jobs:
       - name: Fetch all tags
         run: git fetch --tags
 
-      # 4️⃣ Set Version
+      # 4️⃣ Set Version (pure version, no branch)
       - name: Set Version
         id: set-version
         run: |
@@ -50,21 +50,22 @@ jobs:
               break
             fi
           done
-          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
           echo "Calculated new tag: $new_tag"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
 
-      # 5️⃣ Prepare POM version (branch-aware, sanitized)
+      # 5️⃣ Prepare POM version (prepend branch name only once)
       - name: Prepare POM version
         id: prepare-pom
         run: |
           branch="${GITHUB_REF_NAME}"
-          # Replace slashes and invalid chars
           safe_branch=$(echo "$branch" | tr '/' '-' | tr -cd '[:alnum:]._-')
 
+          version="${{ steps.set-version.outputs.new_tag }}"
+
           if [ "$safe_branch" = "main" ]; then
-            pom_version="${{ steps.set-version.outputs.new_tag }}"
+            pom_version="$version"
           else
-            pom_version="${safe_branch}-${{ steps.set-version.outputs.new_tag }}"
+            pom_version="${safe_branch}-$version"
           fi
 
           echo "POM version: $pom_version"
