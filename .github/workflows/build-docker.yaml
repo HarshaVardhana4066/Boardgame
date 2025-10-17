@@ -142,4 +142,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-updating pomxml file with version · HarshaVardhana4066/maven-
