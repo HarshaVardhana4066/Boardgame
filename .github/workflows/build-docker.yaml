@@ -33,7 +33,7 @@ jobs:
           java-version: '11'
           cache: 'maven'
 
-      # 3️⃣ Fetch all tags (to ensure latest version info)
+      # 3️⃣ Fetch all tags
       - name: Fetch all tags
         run: git fetch --tags
 
@@ -42,7 +42,6 @@ jobs:
         id: set-version
         run: |
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-          echo "Latest tag: $latest_tag"
           IFS='.' read -r major minor patch <<< "${latest_tag#v}"
           while true; do
             patch=$((patch + 1))
@@ -51,25 +50,27 @@ jobs:
               break
             fi
           done
-          echo "New tag: $new_tag"
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-      # 5️⃣ Prepare POM version (branch-aware)
+          echo "Calculated new tag: $new_tag"
+
+      # 5️⃣ Prepare POM version (branch-aware, sanitized)
       - name: Prepare POM version
         id: prepare-pom
         run: |
           branch="${GITHUB_REF_NAME}"
-          version="${{ steps.set-version.outputs.new_tag }}"
-          clean_version="${version#v}"  # remove 'v' prefix
-          
-          if [ "$branch" = "main" ]; then
-            pom_version="$clean_version"
+          # Replace slashes and invalid chars
+          safe_branch=$(echo "$branch" | tr '/' '-' | tr -cd '[:alnum:]._-')
+
+          if [ "$safe_branch" = "main" ]; then
+            pom_version="${{ steps.set-version.outputs.new_tag }}"
           else
-            safe_branch=$(echo "$branch" | tr '/' '-')
-            pom_version="${safe_branch}-${clean_version}"
+            pom_version="${safe_branch}-${{ steps.set-version.outputs.new_tag }}"
           fi
-          
+
           echo "POM version: $pom_version"
           echo "pom_version=$pom_version" >> "$GITHUB_OUTPUT"
+          echo "docker_tag=$pom_version" >> $GITHUB_ENV
+
       # 6️⃣ Update pom.xml version (before build)
       - name: Update pom.xml version
         run: mvn versions:set -DnewVersion=${{ steps.prepare-pom.outputs.pom_version }} -DgenerateBackupPoms=false
@@ -86,7 +87,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 🔟 Docker login (main branch only)
+      # 🔟 Docker login (main only)
       - name: Login to Docker Hub
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v2
@@ -98,32 +99,24 @@ jobs:
       - name: Build Docker image
         run: docker build -t boardgame-temp -f Dockerfile1 .
 
-      # 1️⃣2️⃣ Set Docker tag
-      - name: Set Docker tag
-        run: |
-          branch="${GITHUB_REF_NAME}"
-          if [ "$branch" = "main" ]; then
-            docker_tag="${{ steps.set-version.outputs.new_tag }}"
-          else
-            docker_tag="${branch}-${{ steps.set-version.outputs.new_tag }}"
-          fi
-          echo "docker_tag=$docker_tag" >> $GITHUB_ENV
-      # 1️⃣3️⃣ Tag Docker image
+      # 1️⃣2️⃣ Tag Docker image
       - name: Tag Docker image
         run: |
           docker tag boardgame-temp ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ env.docker_tag }}
-      # 1️⃣4️⃣ Push Docker image (main branch only)
+
+      # 1️⃣3️⃣ Push Docker image (main only)
       - name: Push Docker image
         if: github.ref == 'refs/heads/main'
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ env.docker_tag }}
 
-      # 1️⃣5️⃣ Configure Git for tagging (main only)
+      # 1️⃣4️⃣ Configure Git (main only)
       - name: Configure Git user
         if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "Harshavardhana"
           git config user.email "your-email@example.com"
-      # 1️⃣6️⃣ Push Git tag (main only)
+
+      # 1️⃣5️⃣ Push Git tag (main only)
       - name: Push Git tag
         if: github.ref == 'refs/heads/main'
         env:
@@ -131,7 +124,8 @@ jobs:
         run: |
           git tag -a "${{ steps.set-version.outputs.new_tag }}" -m "Release ${{ steps.set-version.outputs.new_tag }}"
           git push origin "${{ steps.set-version.outputs.new_tag }}"
-      # 1️⃣7️⃣ Create GitHub Release (main only)
+
+      # 1️⃣6️⃣ Create GitHub Release (main only)
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: actions/create-release@v1
