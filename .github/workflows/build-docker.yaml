@@ -33,32 +33,14 @@ jobs:
           java-version: '11'
           cache: 'maven'
 
-      # 3️⃣ Build Maven project
-      - name: Build with Maven
-        run: mvn clean install -DskipTests
+      # 3️⃣ Fetch all tags (to ensure latest version info)
+      - name: Fetch all tags
+        run: git fetch --tags
 
-      # 4️⃣ Setup Docker Buildx
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # 5️⃣ Docker login (main branch only)
-      - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 6️⃣ Build Docker image
-      - name: Build Docker image
-        run: |
-          docker build -t boardgame-temp -f Dockerfile1 .
-
-      # 7️⃣ Set Version (only after successful build)
+      # 4️⃣ Set Version
       - name: Set Version
         id: set-version
         run: |
-          git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           echo "Latest tag: $latest_tag"
           IFS='.' read -r major minor patch <<< "${latest_tag#v}"
@@ -69,36 +51,84 @@ jobs:
               break
             fi
           done
-          branch="${GITHUB_REF##*/}"
-          if [ "$branch" = "main" ]; then
-            docker_tag="${new_tag}"
-          else
-            docker_tag="${branch}-${new_tag}"
-          fi
+          echo "New tag: $new_tag"
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-          echo "docker_tag=$docker_tag" >> $GITHUB_ENV
-          echo "Branch: $branch"
-          echo "Docker Tag: $docker_tag"
 
-      # 8️⃣ Tag Docker image
+      # 5️⃣ Prepare POM version (branch-aware)
+      - name: Prepare POM version
+        id: prepare-pom
+        run: |
+          branch="${GITHUB_REF_NAME}"
+          version="${{ steps.set-version.outputs.new_tag }}"
+          clean_version="${version#v}"  # remove 'v' prefix
+          
+          if [ "$branch" = "main" ]; then
+            pom_version="$clean_version"
+          else
+            safe_branch=$(echo "$branch" | tr '/' '-')
+            pom_version="${safe_branch}-${clean_version}"
+          fi
+          
+          echo "POM version: $pom_version"
+          echo "pom_version=$pom_version" >> "$GITHUB_OUTPUT"
+
+      # 6️⃣ Update pom.xml version (before build)
+      - name: Update pom.xml version
+        run: mvn versions:set -DnewVersion=${{ steps.prepare-pom.outputs.pom_version }} -DgenerateBackupPoms=false
+
+      # 7️⃣ Verify pom.xml version (optional)
+      - name: Verify pom.xml version
+        run: grep "<version>" pom.xml
+
+      # 8️⃣ Build Maven project
+      - name: Build with Maven
+        run: mvn clean install -DskipTests
+
+      # 9️⃣ Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 🔟 Docker login (main branch only)
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 1️⃣1️⃣ Build Docker image
+      - name: Build Docker image
+        run: docker build -t boardgame-temp -f Dockerfile1 .
+
+      # 1️⃣2️⃣ Set Docker tag
+      - name: Set Docker tag
+        run: |
+          branch="${GITHUB_REF_NAME}"
+          if [ "$branch" = "main" ]; then
+            docker_tag="${{ steps.set-version.outputs.new_tag }}"
+          else
+            docker_tag="${branch}-${{ steps.set-version.outputs.new_tag }}"
+          fi
+          echo "docker_tag=$docker_tag" >> $GITHUB_ENV
+
+      # 1️⃣3️⃣ Tag Docker image
       - name: Tag Docker image
         run: |
           docker tag boardgame-temp ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ env.docker_tag }}
 
-      # 9️⃣ Push Docker image (only for main)
+      # 1️⃣4️⃣ Push Docker image (main branch only)
       - name: Push Docker image
         if: github.ref == 'refs/heads/main'
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ env.docker_tag }}
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/boardgame-fromgit:${{ env.docker_tag }}
 
-      # 🔟 Configure Git for tagging (only main)
+      # 1️⃣5️⃣ Configure Git for tagging (main only)
       - name: Configure Git user
         if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "Harshavardhana"
           git config user.email "your-email@example.com"
 
-      # 1️⃣1️⃣ Push Git tag (after Docker build & tag creation)
+      # 1️⃣6️⃣ Push Git tag (main only)
       - name: Push Git tag
         if: github.ref == 'refs/heads/main'
         env:
@@ -107,7 +137,7 @@ jobs:
           git tag -a "${{ steps.set-version.outputs.new_tag }}" -m "Release ${{ steps.set-version.outputs.new_tag }}"
           git push origin "${{ steps.set-version.outputs.new_tag }}"
 
-      # 1️⃣2️⃣ Create GitHub Release (after tag pushed)
+      # 1️⃣7️⃣ Create GitHub Release (main only)
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: actions/create-release@v1
