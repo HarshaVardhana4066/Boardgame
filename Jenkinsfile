@@ -7,6 +7,11 @@ pipeline {
     }
     
     stages {   
+        stage('git checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/HarshaVardhana4066/Boardgame.git' 
+            }
+        }
         stage('Compile') {
             steps {
             sh 'mvn compile'
