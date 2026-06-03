@@ -1,7 +1,7 @@
 resource "aws_instance" "roboshop" {
     ami = "ami-073130f74f5ffb161"
     instance_type = "t3.micro"
-    vpc_security_group_ids = aws_security_group.by_terraform.id
+    vpc_security_group_ids = [aws_security_group.by_terraform.id]
 }
 
 
