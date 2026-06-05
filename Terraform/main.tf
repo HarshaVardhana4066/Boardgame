@@ -8,9 +8,7 @@ resource "aws_instance" "roboshop" {
     }
 }
 
-
-
-
+/*
 
 resource "aws_security_group" "by_terraform" {
 
@@ -47,3 +45,8 @@ resource "aws_security_group" "by_terraform" {
     }
   
 }
+*/
+
+
+
+
